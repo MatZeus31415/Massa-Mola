@@ -1,0 +1,506 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
+
+#####NÃO ALTERAR NADA ANTES DO MAIN (linha 288) #####
+
+
+def DefineCI(posicoes,velocidades,Nmassas):
+	#Essa função define as posições e velocidades iniciais através do shell. Recomendo criar um arquivo com os valores e rodar o seguinte comando no terminal: python3 NomeDoPrograma.py < NomeDoArquivo.txt
+	
+	while True:
+		a = int(input("Escolha a massa, 0 para terminar: "))
+		if a>0 and a<Nmassas:
+			posicoes[a][0] = float(input("Posicao inicial da massa %d :"%a))
+			velocidades[a][0] = float(input("Velocidade inicial da massa %d :"%a))
+			
+		elif a == 0:
+			return posicoes,velocidades
+			
+		else:
+			print("Número inválido")
+			
+
+def Simulacao(k,m,b,c1,c2,dt,Num,Nmassas,posicoes,velocidades):
+	#Essa função utiliza o método Runge Kutta para calcular as posições e velocidades em cada instante de tempo. Com um tempo suficientemente pequeno, a aceleração será aproximadamente constante no intervalo [t,t+dt] e igual a aceleração calculada pelo RK. Dessa forma, podemos utilizar as equações horárias do MRUV para facilitar os cálculos (forma padrão da EDO).
+	
+	for i in range(Num-1):
+		ac = np.zeros((Nmassas))
+		
+		#Kappa1
+		a_i = (k/m)*(-2*posicoes[0][i]+posicoes[1][i])+(b/m)*(-posicoes[0][i]**3+(posicoes[1][i]-posicoes[0][i])**3)-(c1/m)*velocidades[0][i]-(c2/m)*velocidades[0][i]*abs(velocidades[0][i])
+		
+		velocidades[0][i+1] = velocidades[0][i] + a_i*dt/2
+		posicoes[0][i+1] = posicoes[0][i] + velocidades[0][i]*dt/2 +0.5*a_i*(dt/2)**2
+		
+		ac[0] = a_i/6
+	
+		for j in range(1,Nmassas-1):
+			a_i = (k/m)*(posicoes[j-1][i]-2*posicoes[j][i]+posicoes[j+1][i])+(b/m)*((posicoes[j-1][i]-posicoes[j][i])**3+(posicoes[j+1][i]-posicoes[j][i])**3)-(c1/m)*velocidades[j][i]-(c2/m)*velocidades[j][i]*abs(velocidades[j][i])
+			
+			velocidades[j][i+1] = velocidades[j][i] + a_i*dt/2	
+			posicoes[j][i+1] = posicoes[j][i] + velocidades[j][i]*dt/2 +0.5*a_i*(dt/2)**2
+			
+			ac[j] = a_i/6
+
+			
+		a_i = (k/m)*(-2*posicoes[Nmassas-1][i]+posicoes[Nmassas-2][i])+(b/m)*(-posicoes[Nmassas-1][i]**3+(posicoes[Nmassas-2][i]-posicoes[Nmassas-1][i])**3)-(c1/m)*velocidades[Nmassas-1][i]-(c2/m)*velocidades[Nmassas-1][i]*abs(velocidades[Nmassas-1][i])
+		velocidades[Nmassas-1][i+1] = velocidades[Nmassas-1][i] + a_i*dt/2	
+		posicoes[Nmassas-1][i+1] = posicoes[Nmassas-1][i] + velocidades[Nmassas-1][i]*dt/2 +0.5*a_i*(dt/2)**2
+		
+		ac[Nmassas-1] = a_i/6
+		
+		
+		#Kappa2
+		a_i = (k/m)*(-2*posicoes[0][i+1]+posicoes[1][i+1])+(b/m)*(-posicoes[0][i+1]**3+(posicoes[1][i+1]-posicoes[0][i+1])**3)-(c1/m)*velocidades[0][i+1]-(c2/m)*velocidades[0][i+1]*abs(velocidades[0][i+1])	
+		
+		posicoes[0][i+1] = posicoes[0][i] + velocidades[0][i]*dt/2 +0.5*a_i*(dt/2)**2
+		velocidades[0][i+1] = velocidades[0][i] + a_i*dt/2
+		
+		ac[0] += a_i/3
+		
+		for j in range(1,Nmassas-1):
+			a_i = (k/m)*(posicoes[j-1][i+1]-2*posicoes[j][i+1]+posicoes[j+1][i+1])+(b/m)*((posicoes[j-1][i+1]-posicoes[j][i+1])**3+(posicoes[j+1][i+1]-posicoes[j][i+1])**3)-(c1/m)*velocidades[j][i+1]-(c2/m)*velocidades[j][i+1]*abs(velocidades[j][i+1])
+			
+			posicoes[j][i+1] = posicoes[j][i] + velocidades[j][i]*dt/2 +0.5*a_i*(dt/2)**2
+			velocidades[j][i+1] = velocidades[j][i] + a_i*dt/2	
+			
+			ac[j] += a_i/3	
+			
+		a_i = (k/m)*(-2*posicoes[Nmassas-1][i+1]+posicoes[Nmassas-2][i+1])+(b/m)*(-posicoes[Nmassas-1][i+1]**3+(posicoes[Nmassas-2][i+1]-posicoes[Nmassas-1][i+1])**3)-(c1/m)*velocidades[Nmassas-1][i+1]-(c2/m)*velocidades[Nmassas-1][i+1]*abs(velocidades[Nmassas-1][i+1])
+		
+		posicoes[Nmassas-1][i+1] = posicoes[Nmassas-1][i] + velocidades[Nmassas-1][i]*dt/2 +0.5*a_i*(dt/2)**2
+		velocidades[Nmassas-1][i+1] = velocidades[Nmassas-1][i] + a_i*dt/2
+		
+		ac[Nmassas-1] += a_i/3
+		
+		
+		#Kappa3
+		a_i = (k/m)*(-2*posicoes[0][i+1]+posicoes[1][i+1])+(b/m)*(-posicoes[0][i+1]**3+(posicoes[1][i+1]-posicoes[0][i+1])**3)-(c1/m)*velocidades[0][i+1]-(c2/m)*velocidades[0][i+1]*abs(velocidades[0][i+1])
+		
+		posicoes[0][i+1] = posicoes[0][i] + velocidades[0][i]*dt +0.5*a_i*(dt)**2
+		velocidades[0][i+1] = velocidades[0][i] + a_i*dt
+		
+		ac[0] += a_i/3
+		
+		for j in range(1,Nmassas-1):
+			a_i = (k/m)*(posicoes[j-1][i+1]-2*posicoes[j][i+1]+posicoes[j+1][i+1])+(b/m)*((posicoes[j-1][i+1]-posicoes[j][i+1])**3+(posicoes[j+1][i+1]-posicoes[j][i+1])**3)-(c1/m)*velocidades[j][i+1]-(c2/m)*velocidades[j][i+1]*abs(velocidades[j][i+1])
+			
+			posicoes[j][i+1] = posicoes[j][i] + velocidades[j][i]*dt +0.5*a_i*(dt)**2
+			velocidades[j][i+1] = velocidades[j][i] + a_i*dt
+			
+			ac[j] += a_i/3	
+
+		a_i = (k/m)*(-2*posicoes[Nmassas-1][i+1]+posicoes[Nmassas-2][i+1])+(b/m)*(-posicoes[Nmassas-1][i+1]**3+(posicoes[Nmassas-2][i+1]-posicoes[Nmassas-1][i+1])**3)-(c1/m)*velocidades[Nmassas-1][i+1]-(c2/m)*velocidades[Nmassas-1][i+1]*abs(velocidades[Nmassas-1][i+1])
+		
+		posicoes[Nmassas-1][i+1] = posicoes[Nmassas-1][i] + velocidades[Nmassas-1][i]*dt +0.5*a_i*(dt)**2
+		velocidades[Nmassas-1][i+1] = velocidades[Nmassas-1][i] + a_i*dt
+		
+		ac[Nmassas-1] += a_i/3
+		
+		#Kappa4
+		a_i = (k/m)*(-2*posicoes[0][i+1]+posicoes[1][i+1])+(b/m)*(-posicoes[0][i+1]**3+(posicoes[1][i+1]-posicoes[0][i+1])**3)-(c1/m)*velocidades[0][i+1]-(c2/m)*velocidades[0][i+1]*abs(velocidades[0][i+1])
+		
+		ac[0] += a_i/6
+		
+		
+		posicoes[0][i+1] = posicoes[0][i] + velocidades[0][i]*dt +0.5*ac[0]*(dt)**2
+		velocidades[0][i+1] = velocidades[0][i] + ac[0]*dt
+		
+		for j in range(1,Nmassas-1):
+			a_i = (k/m)*(posicoes[j-1][i+1]-2*posicoes[j][i+1]+posicoes[j+1][i+1])+(b/m)*((posicoes[j-1][i+1]-posicoes[j][i+1])**3+(posicoes[j+1][i+1]-posicoes[j][i+1])**3)-(c1/m)*velocidades[j][i+1]-(c2/m)*velocidades[j][i+1]*abs(velocidades[j][i+1])
+			
+			ac[j] += a_i/6
+			
+			
+			posicoes[j][i+1] = posicoes[j][i] + velocidades[j][i]*dt +0.5*ac[j]*(dt)**2
+			velocidades[j][i+1] = velocidades[j][i] + ac[j]*dt
+				
+		a_i = (k/m)*(-2*posicoes[Nmassas-1][i+1]+posicoes[Nmassas-2][i+1])+(b/m)*(-posicoes[Nmassas-1][i+1]**3+(posicoes[Nmassas-2][i+1]-posicoes[Nmassas-1][i+1])**3)-(c1/m)*velocidades[Nmassas-1][i+1]-(c2/m)*velocidades[Nmassas-1][i+1]*abs(velocidades[Nmassas-1][i+1])
+		
+		ac[Nmassas-1] += a_i/6
+		
+		
+		posicoes[Nmassas-1][i+1] = posicoes[Nmassas-1][i] + velocidades[Nmassas-1][i]*dt +0.5*ac[Nmassas-1]*(dt)**2
+		velocidades[Nmassas-1][i+1] = velocidades[Nmassas-1][i] + ac[Nmassas-1]*dt
+
+	return posicoes,velocidades
+	
+	
+def Energia(k,m,b,dt,c1,c2,Num,Nmassas,posicoes,velocidades):
+	#Essa função calcula a energia mecânica do sistema. Vale lembrar que a energia mecânica não se conserva com as forças dissipativas. Para avaliar a qualidade da simulação, recomendo utilizar a próxima função, caso c1 != 0 ou c2 != 0. Ek: Energia cinética das massas. Ep: Energia potencial das molas. Et: Energia mecânica do sistema
+	
+	Et = np.zeros(Num)
+	
+	for i in range(Num-1):
+		Ek = (m/2)*velocidades[0][i]**2
+		Ep = (k/2)*posicoes[0][i]**2+(b/4)*posicoes[0][i]**4
+		
+		for j in range(1,Nmassas):
+			Ek += (m/2)*velocidades[j][i]**2
+			Ep += (k/2)*(posicoes[j-1][i]-posicoes[j][i])**2+(b/4)*(posicoes[j-1][i]-posicoes[j][i])**4
+			
+		Ep += (k/2)*posicoes[Nmassas-1][i]**2+(b/4)*posicoes[Nmassas-1][i]**4
+		Et[i] = Ep+Ek
+		
+	Ek = (m/2)*velocidades[0][Num-1]**2
+	Ep = (k/2)*posicoes[0][Num-1]**2+(b/4)*posicoes[0][Num-1]**4
+	
+	for j in range(1,Nmassas):
+		Ek += (m/2)*velocidades[j][Num-1]**2
+		Ep += (k/2)*(posicoes[j-1][Num-1]-posicoes[j][Num-1])**2+(b/4)*(posicoes[j-1][Num-1]-posicoes[j][Num-1])**4
+		
+	Ep += (k/2)*posicoes[Nmassas-1][Num-1]**2+(b/4)*posicoes[Nmassas-1][Num-1]**4
+	Et[Num-1] = Ep+Ek
+
+	return Et
+
+		
+def Energiafdis(k,m,b,dt,c1,c2,Num,Nmassas,posicoes,velocidades):
+	#Essa função calcula a energia total do sistema, que deve se conservar. A energia total é importante para avaliar a qualidade da simulação. Quanto menor o dt, menor diferença Et[i]-Et[0]. 
+	#Ek: Energia cinética das massas. Ep: Energia potencial das molas. Ed: Energia dissipada (para o cálculo dessa energia foi utilizado o método do trapézio - quadratura -). Et: Energia mecânica do sistema
+	Et = np.zeros(Num)
+	Ed = 0
+	
+	for i in range(Num-1):
+		Ek = (m/2)*velocidades[0][i]**2
+		Ep = (k/2)*posicoes[0][i]**2+(b/4)*posicoes[0][i]**4
+		Ed += (c1*(velocidades[0][i]+velocidades[0][i+1])+c2*(velocidades[0][i]*abs(velocidades[0][i])+velocidades[0][i+1]*abs(velocidades[0][i+1])))*(posicoes[0][i+1]-posicoes[0][i])/(2.0)
+		#Ed += abs(c1*(velocidades[0][i+1]*abs(velocidades[0][i+1])+velocidades[0][i]*abs(velocidades[0][i]))+c2*(velocidades[0][i+1]**3+velocidades[0][i]**3))*dt/(2.0)
+		
+		for j in range(1,Nmassas):
+			Ek += (m/2)*velocidades[j][i]**2
+			Ep += (k/2)*(posicoes[j-1][i]-posicoes[j][i])**2+(b/4)*(posicoes[j-1][i]-posicoes[j][i])**4
+			#Ed += abs(c1*(velocidades[j][i+1]*abs(velocidades[j][i+1])+velocidades[j][i]*abs(velocidades[j][i]))+c2*(velocidades[j][i+1]**3+velocidades[j][i]**3))*dt/(2.0)
+			Ed += (c1*(velocidades[j][i]+velocidades[j][i+1])+c2*(velocidades[j][i]*abs(velocidades[j][i])+velocidades[j][i+1]*abs(velocidades[j][i+1])))*(posicoes[j][i+1]-posicoes[j][i])/(2.0)
+			
+		Ep += (k/2)*posicoes[Nmassas-1][i]**2+(b/4)*posicoes[Nmassas-1][i]**4
+		Et[i] = Ep+Ek+Ed
+	
+	Ek = (m/2)*velocidades[0][Num-1]**2
+	Ep = (k/2)*posicoes[0][Num-1]**2+(b/4)*posicoes[0][Num-1]**4
+	
+	for j in range(1,Nmassas):
+		Ek += (m/2)*velocidades[j][Num-1]**2
+		Ep += (k/2)*(posicoes[j-1][Num-1]-posicoes[j][Num-1])**2+(b/4)*(posicoes[j-1][Num-1]-posicoes[j][Num-1])**4
+		
+	Ep += (k/2)*posicoes[Nmassas-1][Num-1]**2+(b/4)*posicoes[Nmassas-1][Num-1]**4
+	Et[Num-1] = Ep+Ek+Ed
+
+	return Et			
+		
+		
+def CorrigeErroDis(k,m,b,dt,c1,c2,Num,Nmassas,posicoes,velocidades):
+	#Essa função serve para corrigir o erro de máquina associado ao cálculo da energia dissipada, para simulações muito maiores (Número de massas>5000, simulações tridimensionais, dt muito pequeno ou fatores de troca de energia -k ou b- muito pequenos). Adicionar esse fator de correção nas funções de energia caso o erro não se altere ao diminuir o dt
+	Et = np.zeros(Num)
+	Ed = 0.0
+	
+	for i in range(Num-1):
+		Ed += (c1*(velocidades[0][i]+velocidades[0][i+1])+c2*(velocidades[0][i]*abs(velocidades[0][i])+velocidades[0][i+1]*abs(velocidades[0][i+1])))*(posicoes[0][i+1]-posicoes[0][i])/(2.0)
+		#Ed += abs(c1*(velocidades[0][i+1]*abs(velocidades[0][i+1])+velocidades[0][i]*abs(velocidades[0][i]))+c2*(velocidades[0][i+1]**3+velocidades[0][i]**3))*dt/(2.0)
+		
+		for j in range(1,Nmassas):
+			#Ed += abs(c1*(velocidades[j][i+1]*abs(velocidades[j][i+1])+velocidades[j][i]*abs(velocidades[j][i]))+c2*(velocidades[j][i+1]**3+velocidades[j][i]**3))*dt/(2.0)
+			Ed += (c1*(velocidades[j][i]+velocidades[j][i+1])+c2*(velocidades[j][i]*abs(velocidades[j][i])+velocidades[j][i+1]*abs(velocidades[j][i+1])))*(posicoes[j][i+1]-posicoes[j][i])/(2.0)
+
+	return Ed
+		
+
+def Interpolacao(k,m,b,c1,c2,dt,Num,Nmassas,posicoes,velocidades):
+	#Essa função recebe um conjunto de pontos pelo shell e interpola fornecendo a posição e velocidade de cada massa em cada instante de tempo. Recomendo criar um arquivo com os valores de t escolhidos e rodar o seguinte comando: python3 python3 NomeDoPrograma.py < NomeDoArquivoDeEntrada.txt > NomeDoArquivoDeSaida.txt
+	
+	print("Digite os instantes de tempo a serem interpolados. 0 para terminar")
+	L = []
+	n = 1
+
+	while True:
+		a = float(input("Tempo %d: "%n))
+		if a != 0:
+			L.append(a)
+			
+		else:
+			break
+			
+		n +=1
+		
+	v = np.zeros((Nmassas,n-1))
+	p = np.zeros((Nmassas,n-1))
+	
+	for i in range(len(L)):
+		if L[i]/dt%1 == 0:
+			for j in range(Nmassas):
+				v[j][i] = velocidades[j][i]
+				p[j][i] = posicoes[j][i]
+				
+		else:
+			du = (L[i]/dt)%1
+			t0 = int((L[i]/dt)-du)
+			
+			for j in range(Nmassas):	
+				a_i = (velocidades[j][t0+1]-velocidades[j][t0])/dt
+				v[j][i] = velocidades[0][t0] + a_i*du
+				p[j][i] = posicoes[0][t0] + velocidades[0][t0]*du +0.5*a_i*(du)**2
+				
+	return GeraTabela(v,p,L,Nmassas,n-1)
+	
+	
+def GeraTabela(v,p,L,Nmassas,n):
+	#Essa função gera uma tabela com os tempos interpolados. Caso t>1000, é necessário alterar algumas coisas na tabela para sair com a formatação adequada
+	print("     t      |",end="")
+	
+	for i in range(1,Nmassas+1):
+		print(" p massa %3d |"%i,end="")
+		print(" v massa %3d |"%i,end="")
+		
+	print()
+	
+	for i in range(n):
+		if L[i]<10:
+			print("   %4.5f  |"%L[i],end="")
+			
+		elif L[i]<100:
+			print("  %4.5f  |"%L[i],end="")
+			
+		elif L[i]<1000:
+			print("  %4.5f |"%L[i],end="")
+			
+		else:
+			print(" %4.5f |"%L[i],end="")
+			
+		for j in range(Nmassas):
+			if p[j][i]<0:
+				print("  %5.5f   |"%p[j][i],end="")
+				
+			else:
+				print("   %5.5f   |"%p[j][i],end="")
+				
+			if v[j][i]<0:
+				print("  %5.5f   |"%v[j][i],end="")
+				
+			else:
+				print("   %5.5f   |"%v[j][i],end="")
+				
+		print()
+
+
+
+
+def main():
+	k = 4.0   	  	#Número de onda, igual para todas as molas
+	m = 1.0     	#Massa de cada corpo. Igual para todos os corpos
+	b = 0.0			#Coeficiente anarmônico, expansão de Taylor da lei de Hooke
+	c1 = 0.0		#Coeficiente de atrito de Newton 
+	c2 = 0.0		#Coeficiente de atrito de Stokes
+	t_in = 0.0		#Tempo inicial de simulação, útil para quebrar simulações longas em partes menoresz
+	t_fin = 20  	#Tempo final de simulação
+	dt = 0.0001	#Ticket temporal da simulação, diminuir caso a energia não se conserve
+	Nmassas = 5		#Número de massas da simulação, necesário que Nmassas>1 ; Se Nmassas>999, alterar número de casas em GeraTabela, caso dejese interpolar
+
+	Esc = 0 		#Boleano para definir condições iniciais pelo shell (1) ou pelo código (0)
+	En = 1 			#Boleano para gerar os gráficos de energia. Lembrar de escolher a função correta para o gráfico (Emec)
+	Emec = 0 		#Boleano para escolher Energia Mecânica (1), Total (0) ou Ambas (2)
+	p = 1 			#Boleano para gerar os gráficos de posições por tempo ou posições por velocidades
+	massas = 2 		#Boleano para gerar um gráfico para todas as massas (1) ou um para cada massa (0) ou (2) para ambos
+	inte = 0  		#Boleano para gerar as interpolações	
+	texto = 1  		#Boleano para gerar txt com parâmetros da simulação
+	
+	if texto:
+		print("k = ",k)
+		print("m = ",m)
+		print("b = ",b)
+		print("c1 = ",c1)
+		print("c2 = ",c2)
+		print("t_in = ",t_in)
+		print("t_fin = ",t_fin)
+		print("dt = ",dt)
+		print("Nmassas = ",Nmassas)
+	
+	
+	Num = int((t_fin - t_in)/dt) #Numero de tickets temporais no intervalo
+	tempos = np.linspace(t_in,t_fin,Num) #Lista com os tempos para os gráficos
+	
+	
+	posicoes = np.zeros((Nmassas,Num))    #Matriz de posições das massas a cada instante de tempo
+	velocidades = np.zeros((Nmassas,Num)) #Matriz de velocidades das massas a cada instante de tempo
+	
+	if Esc == 1:
+		posicoes,velocidades = DefineCI(posicoes,velocidades,Nmassas) 
+		# Função para determonar as condições iniciais pelo shell. Se forem poucas CI, adicioná-las a baixo. Caso deseje quebrar a simulação em partes menores, adicionar como CI as posições e velocidades do instante de encerramento da simulação anterior. Lembre de alterar o t_in
+	elif Esc == 0:
+		#Colocar manualmente as condições iniciais
+		velocidades[0][0] = 5	
+
+
+	##### NÃO ALTERAR NADA A PARTIR DAQUI #####
+
+
+
+	posicoes,velocidades = Simulacao(k,m,b,c1,c2,dt,Num,Nmassas,posicoes,velocidades)
+	
+
+	#Erro = CorrigeErroDis(k,m,b,dt,0.0,0.0,Num,Nmassas,posicoes,velocidades)
+	#print(Erro)
+	
+
+
+	
+	if En:	
+		if Emec == 1:
+			Em = Energia(k,m,b,c1,c2,dt,Num,Nmassas,posicoes,velocidades)
+			plt.figure(figsize=(16,5))
+			plt.plot(tempos,Em)
+			plt.xlabel("Tempo",fontsize=18)
+			plt.ylabel("Em",fontsize=18)
+			plt.title('Gráfico Energia Mecânica') 
+			
+	
+			plt.savefig("Em.png")
+			plt.show()
+			
+			#print(Em[-1]-Em[0])
+			
+		elif Emec == 0:
+			Em = Energiafdis(k,m,b,dt,c1,c2,Num,Nmassas,posicoes,velocidades)
+			plt.figure(figsize=(16,5))
+			plt.plot(tempos,Em)
+			plt.xlabel("Tempo",fontsize=18)
+			plt.ylabel("Em",fontsize=18)
+			plt.title('Gráfico Energia Total')
+			
+			
+			plt.savefig("Et.png")
+			plt.show()
+			
+			#print(Em[-1]-Em[0])
+		
+		elif Emec==2:
+			Em = Energia(k,m,b,c1,c2,dt,Num,Nmassas,posicoes,velocidades)		
+			plt.figure(figsize=(16,5))
+			plt.plot(tempos,Em)
+			plt.xlabel("Tempo",fontsize=18)
+			plt.ylabel("Em",fontsize=18)
+			plt.title('Gráfico Energia Mecânica')
+			
+			
+			plt.savefig("Em.png")
+			plt.show()	
+			
+			Em = Energiafdis(k,m,b,dt,c1,c2,Num,Nmassas,posicoes,velocidades)	
+			plt.figure(figsize=(16,5))
+			plt.plot(tempos,Em)
+			plt.xlabel("Tempo",fontsize=18)
+			plt.ylabel("Em",fontsize=18)
+			plt.title('Gráfico Energia Total')
+			
+			
+			plt.savefig("Et.png")
+			plt.show()				
+	
+	if p:
+		if massas ==1:
+			#Para o conjunto de massas:
+			plt.figure(figsize=(16,5))
+			
+			for i in range(Nmassas):
+				plt.plot(tempos,posicoes[i], label = "massa %d"%(i+1))
+			plt.xlabel("Tempo",fontsize=18)
+			plt.ylabel("Posição",fontsize=18)
+			plt.title('Gráfico Posições X Tempo para todas as massas',fontsize=18)
+			
+			plt.legend()
+			plt.savefig("PT_ConjuntoMassas")
+			plt.show()
+			
+			plt.figure(figsize=(16,5))
+			
+			for i in range(Nmassas):
+				plt.plot(posicoes[i],velocidades[i], label = "massa %d"%(i+1))
+
+			plt.xlabel("Posição",fontsize=18)
+			plt.ylabel("Velocidade",fontsize=18)
+			plt.title('Gráfico Posições X Velocidades para todas as massas',fontsize=18)
+			
+			plt.legend()
+			plt.savefig("PV_ConjuntoMassas")
+			plt.show()
+			
+		
+		elif massas==0:
+			#Para cada massa:
+			
+			for i in range(Nmassas):
+				plt.figure(figsize=(16,5))
+				plt.plot(tempos,posicoes[i])
+				plt.xlabel("Tempo",fontsize=18)
+				plt.ylabel("Posição",fontsize=18)
+				plt.title('Gráfico Posições X Tempo para a massa %d'%(i+1),fontsize=18)
+				
+				plt.savefig("PTmassa %d"%(i+1))
+			
+			
+			
+			for i in range(Nmassas):
+				plt.figure(figsize=(16,5))
+				plt.plot(posicoes[i],velocidades[i])
+
+				plt.xlabel("Posição",fontsize=18)
+				plt.ylabel("Velocidade",fontsize=18)
+				plt.title('Gráfico Posições X Velocidades para a massas %d'%(i+1),fontsize=18)
+				
+				plt.savefig("PVmassa %d"%(i+1))
+		elif massas ==2:	
+			for i in range(Nmassas):
+				plt.figure(figsize=(16,5))
+				plt.plot(tempos,posicoes[i])
+				plt.xlabel("Tempo",fontsize=18)
+				plt.ylabel("Posição",fontsize=18)
+				plt.title('Gráfico Posições X Tempo para a massa %d'%(i+1),fontsize=18)
+				
+				plt.savefig("PTmassa %d"%(i+1))
+			
+			
+			
+			for i in range(Nmassas):
+				plt.figure(figsize=(16,5))
+				plt.plot(posicoes[i],velocidades[i])
+
+				plt.xlabel("Posição",fontsize=18)
+				plt.ylabel("Velocidade",fontsize=18)
+				plt.title('Gráfico Posições X Velocidades para a massas %d'%(i+1),fontsize=18)
+				
+				plt.savefig("PVmassa %d"%(i+1))	
+				
+				
+				
+			plt.figure(figsize=(16,5))
+			
+			for i in range(Nmassas):
+				plt.plot(tempos,posicoes[i], label = "massa %d"%(i+1))
+			plt.xlabel("Tempo",fontsize=18)
+			plt.ylabel("Posição",fontsize=18)
+			plt.title('Gráfico Posições X Tempo para todas as massas',fontsize=18)
+			
+			plt.legend()
+			plt.savefig("PT_ConjuntoMassas")
+			plt.show()
+			
+			plt.figure(figsize=(16,5))
+			
+			for i in range(Nmassas):
+				plt.plot(posicoes[i],velocidades[i], label = "massa %d"%(i+1))
+
+			plt.xlabel("Posição",fontsize=18)
+			plt.ylabel("Velocidade",fontsize=18)
+			plt.title('Gráfico Posições X Velocidades para todas as massas',fontsize=18)
+			
+			plt.legend()
+			plt.savefig("PV_ConjuntoMassas")
+			plt.show()		
+				
+
+
+	if inte:
+		Interpolacao(k,m,b,c1,c2,dt,Num,Nmassas,posicoes,velocidades)
+		
+if __name__ == "__main__":
+    main()
