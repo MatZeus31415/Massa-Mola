@@ -445,7 +445,7 @@ def main():
 
 				plt.xlabel("Posição",fontsize=18)
 				plt.ylabel("Velocidade",fontsize=18)
-				plt.title('Gráfico Posições X Velocidades para a massas %d'%(i+1),fontsize=18)
+				plt.title('Gráfico Posições X Velocidades para a massa %d'%(i+1),fontsize=18)
 				
 				plt.savefig("PVmassa %d"%(i+1))
 		elif massas ==2:	
@@ -466,7 +466,7 @@ def main():
 
 				plt.xlabel("Posição",fontsize=18)
 				plt.ylabel("Velocidade",fontsize=18)
-				plt.title('Gráfico Posições X Velocidades para a massas %d'%(i+1),fontsize=18)
+				plt.title('Gráfico Posições X Velocidades para a massa %d'%(i+1),fontsize=18)
 				
 				plt.savefig("PVmassa %d"%(i+1))	
 				
